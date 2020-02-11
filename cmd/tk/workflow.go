@@ -103,7 +103,8 @@ func diffCmd() *cobra.Command {
 		}
 
 		if interactive {
-			pageln(*changes)
+			h := highlight("diff", *changes)
+			pageln(h)
 		} else {
 			fmt.Println(*changes)
 		}

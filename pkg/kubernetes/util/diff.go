@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -42,8 +43,15 @@ func DiffStr(name, is, should string) (string, error) {
 	buf := bytes.Buffer{}
 	merged := filepath.Join(dir, "MERGED-"+name)
 	live := filepath.Join(dir, "LIVE-"+name)
-	cols := strings.Join([]string{"--cols=", terminal_width()}, "")
-	cmd := exec.Command("icdiff", "-r", cols, live, merged)
+
+	var cmd *exec.Cmd
+	if isCommandAvailable("icdiff") {
+		cols := strings.Join([]string{"--cols=", terminal_width()}, "")
+		cmd = exec.Command("icdiff", "-r", cols, live, merged)
+	} else {
+		cmd = exec.Command("diff", "-u", "-N", live, merged)
+	}
+
 	cmd.Stdout = &buf
 	err = cmd.Run()
 
@@ -56,7 +64,7 @@ func DiffStr(name, is, should string) (string, error) {
 
 	out := buf.String()
 	if out != "" {
-		out = fmt.Sprintf("icdiff -r %s %s\n%s", live, merged, out)
+		out = fmt.Sprintf("%s\n%s", cmd, out)
 	}
 
 	return out, nil
@@ -99,4 +107,13 @@ func terminal_width() string {
 		return "80"
 	}
 	return strings.Split(string(out), " ")[1]
+}
+
+func isCommandAvailable(name string) bool {
+	cmd := exec.Command("/bin/sh", "-c", "command -v "+name)
+	if err := cmd.Run(); err != nil {
+		log.Fatalf("Command not found: %s\n", name)
+		return false
+	}
+	return true
 }
